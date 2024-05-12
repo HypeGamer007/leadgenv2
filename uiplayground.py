@@ -1,76 +1,86 @@
 #!/usr/bin/env python3
-from nicegui import events, ui
+from nicegui import ui
+from googlecustomsearch import google_custom_search
+from save_to_csv import save_to_csv
+import os
+from datetime import datetime
 
-columns = [
-    {'name': 'name', 'label': 'Name', 'field': 'name', 'align': 'left'},
-    {'name': 'age', 'label': 'Age', 'field': 'age'},
-]
-rows = [
-    {'id': 0, 'name': 'Alice', 'age': 18},
-    {'id': 1, 'name': 'Bob', 'age': 21},
-    {'id': 2, 'name': 'Carol', 'age': 20},
-]
+def set_site(site_url):
+    site_entry.value = site_url
 
+def run_search():
+    site = site_entry.value
+    keyword = keyword_entry.value
+    domain = domain_entry.value
+    run_name = run_name_entry.value
+    api_key = os.getenv("API_KEY")
+    cx = os.getenv("CUSTOM_SEARCH_ENGINE_ID")
+    number_of_pages = int(pages_entry.value)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = os.path.join(script_dir, f'{run_name}_{timestamp}.csv')
+    start = 1
+    total_results_added = 0
+    for _ in range(number_of_pages):
+        data = google_custom_search(site, keyword, domain, api_key, cx, start)
+        if data and 'items' in data:
+            results_added = save_to_csv(data, filename)
+            total_results_added += results_added
+            start += 10  # Assuming 10 results per page
+        else:
+            break
+    output_log.set_text(f"Results saved to {filename}\nTotal results added: {total_results_added}")
+    search_history_table.add_rows([timestamp, keyword, run_name, filename, total_results_added])
 
-def add_row() -> None:
-    new_id = max((dx['id'] for dx in rows), default=-1) + 1
-    rows.append({'id': new_id, 'name': 'New guy', 'age': 21})
-    ui.notify(f'Added new row with ID {new_id}')
-    table.update()
+def on_tab_change(tab_value):
+    if tab_value == 'Google Search':
+        tab_panels.set_value('A')
+    elif tab_value == 'Database':
+        tab_panels.set_value('B')
 
+with ui.header().classes(replace='row items-center') as header:
+    ui.button(on_click=lambda: left_drawer.toggle(), icon='menu').props('flat color=white')
+    with ui.tabs() as tabs:
+        google_tab = ui.tab('Google Search')
+        database_tab = ui.tab('Database')
+        tabs.on('change', on_tab_change)  # Use 'on' method to handle tab change event
 
-def rename(e: events.GenericEventArguments) -> None:
-    for row in rows:
-        if row['id'] == e.args['id']:
-            row.update(e.args)
-    ui.notify(f'Updated rows to: {table.rows}')
-    table.update()
+with ui.footer(value=False) as footer:
+    ui.label('Footer')
 
+with ui.left_drawer().classes('bg-blue-100') as left_drawer:
+    ui.label('Side menu')
 
-def delete(e: events.GenericEventArguments) -> None:
-    rows[:] = [row for row in rows if row['id'] != e.args['id']]
-    ui.notify(f'Deleted row with ID {e.args["id"]}')
-    table.update()
+with ui.page_sticky(position='bottom-right', x_offset=20, y_offset=20):
+    ui.button(on_click=footer.toggle, icon='contact_support').props('fab')
 
+with ui.tab_panels(tabs, value='Google Search').classes('w-full') as tab_panels:
+    with ui.tab_panel('Google Search'):
+        with ui.row():
+            ui.label('Site:').style('width: 100px')
+            site_entry = ui.input()
+            ui.button('Instagram', on_click=lambda: set_site('instagram.com'))
+            # Add other buttons similarly
 
-table = ui.table(columns=columns, rows=rows, row_key='name').classes('w-60')
-table.add_slot('header', r'''
-    <q-tr :props="props">
-        <q-th auto-width />
-        <q-th v-for="col in props.cols" :key="col.name" :props="props">
-            {{ col.label }}
-        </q-th>
-    </q-tr>
-''')
-table.add_slot('body', r'''
-    <q-tr :props="props">
-        <q-td auto-width >
-            <q-btn size="sm" color="warning" round dense icon="delete"
-                @click="() => $parent.$emit('delete', props.row)"
-            />
-        </q-td>
-        <q-td key="name" :props="props">
-            {{ props.row.name }}
-            <q-popup-edit v-model="props.row.name" v-slot="scope"
-                @update:model-value="() => $parent.$emit('rename', props.row)"
-            >
-                <q-input v-model="scope.value" dense autofocus counter @keyup.enter="scope.set" />
-            </q-popup-edit>
-        </q-td>
-        <q-td key="age" :props="props">
-            {{ props.row.age }}
-            <q-popup-edit v-model="props.row.age" v-slot="scope"
-                @update:model-value="() => $parent.$emit('rename', props.row)"
-            >
-                <q-input v-model.number="scope.value" type="number" dense autofocus counter @keyup.enter="scope.set" />
-            </q-popup-edit>
-        </q-td>
-    </q-tr>
-''')
-with table.add_slot('bottom-row'):
-    with table.cell().props('colspan=3'):
-        ui.button('Add row', icon='add', color='accent', on_click=add_row).classes('w-full')
-table.on('rename', rename)
-table.on('delete', delete)
+        with ui.row():
+            keyword_entry = ui.input('Keyword')
 
-ui.run()
+        with ui.row():
+            domain_entry = ui.input('Domain')
+
+        with ui.row():
+            run_name_entry = ui.input('Run Name')
+
+        with ui.row():
+            pages_entry = ui.number('Number of Pages', min=1, step=1)  # Use ui.number for numerical input
+
+        ui.button('Search', on_click=run_search)
+
+        output_log = ui.label()
+
+        search_history_table = ui.table(['Timestamp', 'Keyword', 'Run Name', 'CSV File', 'Total Results Added'], rows=[])
+
+    with ui.tab_panel('Database'):
+        # Add code for database UI here
+
+        ui.run()
