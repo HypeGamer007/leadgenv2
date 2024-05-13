@@ -68,5 +68,4 @@ def setup_ui():
     global search_history_table
     search_history_table = ui.table(['Timestamp', 'Keyword', 'Run Name', 'CSV File', 'Total Results Added'], rows=[])
 
-    ui.run(title='Google Custom Search', port=8080)
-    ui.run(title='Google Custom Search', port=8080)
+    ui.run()

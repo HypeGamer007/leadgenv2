@@ -4,6 +4,7 @@ from googlecustomsearch import google_custom_search
 from save_to_csv import save_to_csv
 import os
 from datetime import datetime
+from database import columns, rows
 
 def set_site(site_url):
     site_entry.value = site_url
@@ -34,9 +35,13 @@ def run_search():
 
 def on_tab_change(tab_value):
     if tab_value == 'Google Search':
-        tab_panels.set_value('A')
+        table.visible = False  # Assuming 'table' is the variable holding your table component
     elif tab_value == 'Database':
-        tab_panels.set_value('B')
+        table.visible = True
+
+# def setup_ui():
+#     # Add the setup logic for the UI components here
+#     pass  # Placeholder for the actual setup code
 
 with ui.header().classes(replace='row items-center') as header:
     ui.button(on_click=lambda: left_drawer.toggle(), icon='menu').props('flat color=white')
@@ -48,14 +53,15 @@ with ui.header().classes(replace='row items-center') as header:
 with ui.footer(value=False) as footer:
     ui.label('Footer')
 
-with ui.left_drawer().classes('bg-blue-100') as left_drawer:
-    ui.label('Side menu')
+# with ui.left_drawer().classes('bg-blue-100') as left_drawer:
+#     ui.label('Side menu')
 
-with ui.page_sticky(position='bottom-right', x_offset=20, y_offset=20):
-    ui.button(on_click=footer.toggle, icon='contact_support').props('fab')
+# with ui.page_sticky(position='bottom-right', x_offset=20, y_offset=20):
+#     ui.button(on_click=footer.toggle, icon='contact_support').props('fab')
 
-with ui.tab_panels(tabs, value='Google Search').classes('w-full') as tab_panels:
+with ui.tab_panels(tabs, value='Google Search') as tab_panels:
     with ui.tab_panel('Google Search'):
+        # Add the search UI logic here
         with ui.row():
             ui.label('Site:').style('width: 100px')
             site_entry = ui.input()
@@ -72,15 +78,19 @@ with ui.tab_panels(tabs, value='Google Search').classes('w-full') as tab_panels:
             run_name_entry = ui.input('Run Name')
 
         with ui.row():
-            pages_entry = ui.number('Number of Pages', min=1, step=1)  # Use ui.number for numerical input
+            pages_entry = ui.number('Number of Pages', min=1, step=1)
 
         ui.button('Search', on_click=run_search)
 
+        global output_log
         output_log = ui.label()
 
-        search_history_table = ui.table(['Timestamp', 'Keyword', 'Run Name', 'CSV File', 'Total Results Added'], rows=[])
-
     with ui.tab_panel('Database'):
-        # Add code for database UI here
+        # Define the table here to ensure it's only available in the 'Database' tab
+        with ui.table(title='Master Database', columns=columns, rows=rows, selection='multiple', pagination=10).classes('w-full') as table:
+            with table.add_slot('top-right'):
+                with ui.input(placeholder='Search').props('type=search').bind_value(table, 'filter').add_slot('append'):
+                    ui.icon('search')
 
-        ui.run()
+tabs.on('change', on_tab_change)
+ui.run()
