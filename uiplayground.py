@@ -4,7 +4,7 @@ from googlecustomsearch import google_custom_search
 from save_to_csv import save_to_csv
 import os
 from datetime import datetime
-from database import columns, rows
+from database import get_columns, get_rows
 
 def set_site(site_url):
     site_entry.value = site_url
@@ -35,7 +35,7 @@ def run_search():
 
 def on_tab_change(tab_value):
     if tab_value == 'Google Search':
-        table.visible = False  # Assuming 'table' is the variable holding your table component
+        table.visible = False
     elif tab_value == 'Database':
         table.visible = True
 
@@ -87,10 +87,12 @@ with ui.tab_panels(tabs, value='Google Search') as tab_panels:
 
     with ui.tab_panel('Database'):
         # Define the table here to ensure it's only available in the 'Database' tab
+        columns = get_columns()
+        rows = get_rows()
         with ui.table(title='Master Database', columns=columns, rows=rows, selection='multiple', pagination=10).classes('w-full') as table:
             with table.add_slot('top-right'):
                 with ui.input(placeholder='Search').props('type=search').bind_value(table, 'filter').add_slot('append'):
                     ui.icon('search')
 
-tabs.on('change', on_tab_change)
-ui.run()
+        tabs.on('change', on_tab_change)
+        ui.run()
